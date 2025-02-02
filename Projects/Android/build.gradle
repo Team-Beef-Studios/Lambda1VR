@@ -1,5 +1,23 @@
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:4.0.0'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
 apply plugin: 'com.android.application'
-apply from: "${rootProject.projectDir}/XrApp.gradle"
+apply from: "XrApp.gradle"
 
 android {
   // This is the name of the generated apk file, which will have

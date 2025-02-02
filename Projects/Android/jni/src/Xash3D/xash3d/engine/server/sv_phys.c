@@ -297,7 +297,7 @@ void SV_AngularMove( edict_t *ent, float frametime, float friction )
 	VectorMA( ent->v.angles, frametime, ent->v.avelocity, ent->v.angles );
 	if( friction == 0.0f ) return;
 
-	adjustment = frametime * (sv_stopspeed->value / 10.0f) * sv_friction->value * fabs( friction );
+    adjustment = frametime * (sv_stopspeed->value / 10.0f) * max(sv_friction->value, 10.f) * fabs( friction );
 
 	for( i = 0; i < 3; i++ )
 	{
@@ -331,7 +331,7 @@ void SV_LinearMove( edict_t *ent, float frametime, float friction )
 	VectorMA( ent->v.origin, frametime, ent->v.velocity, ent->v.origin );
 	if( friction == 0.0f ) return;
 
-	adjustment = frametime * (sv_stopspeed->value / 10.0f) * sv_friction->value * fabs( friction );
+	adjustment = frametime * (sv_stopspeed->value / 10.0f) * max(sv_friction->value, 10.f) * fabs( friction );
 
 	for( i = 0; i < 3; i++ )
 	{
@@ -1583,7 +1583,7 @@ void SV_Physics_Step( edict_t *ent )
 
 			if( speed )
 			{
-				friction = sv_friction->value * ent->v.friction;	// factor
+				friction = max(sv_friction->value, 10.f) * ent->v.friction;	// factor
 				ent->v.friction = 1.0f; // g-cont. ???
 				if( wasonmover ) friction *= 0.5f; // add a little friction
 

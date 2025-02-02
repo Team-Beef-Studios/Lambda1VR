@@ -245,7 +245,7 @@ void SV_UpdateMovevars( qboolean initialize )
 	svgame.movevars.accelerate = sv_accelerate->value;
 	svgame.movevars.airaccelerate = sv_airaccelerate->value;
 	svgame.movevars.wateraccelerate = sv_wateraccelerate->value;
-	svgame.movevars.friction = sv_friction->value;
+	svgame.movevars.friction = max(sv_friction->value, 10.f);
 	svgame.movevars.edgefriction = sv_edgefriction->value;
 	svgame.movevars.waterfriction = sv_waterfriction->value;
 	svgame.movevars.bounce = sv_wallbounce->value;
@@ -961,7 +961,7 @@ void SV_Init( void )
 #else
     sv_accelerate = Cvar_Get( "sv_accelerate", "10", CVAR_PHYSICINFO, "rate at which a player accelerates to sv_maxspeed" );
 #endif
-    sv_friction = Cvar_Get( "sv_friction", "4", CVAR_PHYSICINFO, "how fast you slow down" );
+    sv_friction = Cvar_Get( "sv_friction", "10", CVAR_PHYSICINFO, "how fast you slow down" );
 	sv_edgefriction = Cvar_Get( "edgefriction", "2", CVAR_PHYSICINFO, "how much you slow down when nearing a ledge you might fall off" );
 	sv_stopspeed = Cvar_Get( "sv_stopspeed", "100", CVAR_PHYSICINFO, "how fast you come to a complete stop" );
 	sv_maxclients = Cvar_Get( "maxplayers", "1", CVAR_LATCH|CVAR_SERVERNOTIFY, "server clients limit" );

@@ -13,8 +13,6 @@ buildscript {
   dependencies {
     classpath 'com.android.tools.build:gradle:4.0.0'
   }
-
-  tasks.register("wrapper")
 }
 
 class XrAppPlugin implements Plugin<Project> {
@@ -232,7 +230,5 @@ class XrAppPlugin implements Plugin<Project> {
 if (!tasks.findByName("prepareKotlinBuildScriptModel")) {
     tasks.register("prepareKotlinBuildScriptModel") {}
 }
-
-
 
 apply plugin: XrAppPlugin

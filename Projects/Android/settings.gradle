@@ -1,4 +1,3 @@
-rootProject.projectDir = new File(settingsDir, '../..')
 rootProject.name = "Lambda1VR"
 
-include ':', 'Projects:Android'
+include ':'
