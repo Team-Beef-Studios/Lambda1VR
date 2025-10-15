@@ -35,7 +35,7 @@ Projects/Android/.cxx/*
 Projects/Android/.externalNativeBuild/*
 Projects/Android/.gradle/*
 Projects/Android/.idea/codeStyles/Project.xml
-.idea/*
+Projects/.idea/*
 .gradle/*
 assets/*
 *.json

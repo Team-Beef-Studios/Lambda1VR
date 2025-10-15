@@ -1027,7 +1027,7 @@ qboolean Touch_IsVisible( touch_button_t *button )
 
 void Touch_DrawTouchPoint()
 {
-    if( !touch.initialized || (!touch_enable->integer && !touch.clientonly) )
+    if( !touch.initialized)// || (!touch_enable->integer && !touch.clientonly) )
         return;
 
     if( cls.key_dest == key_game )
@@ -1243,7 +1243,7 @@ void Touch_Draw( void )
 {
 	touch_button_t *button;
 
-	if( !touch.initialized || (!touch_enable->integer && !touch.clientonly) )
+	if( !touch.initialized)// || (!touch_enable->integer && !touch.clientonly) )
 		return;
 
 	if( cls.key_dest != key_game && touch_in_menu->integer == 0 )
@@ -1820,7 +1820,7 @@ int IN_TouchEvent( touchEventType type, int fingerID, float x, float y, float dx
 			return 0;
 	}
 
-	if( !touch.initialized || (!touch_enable->integer && !touch.clientonly) )
+	if( !touch.initialized)// || (!touch_enable->integer && !touch.clientonly) )
 	{
 #if 0
 		if( type == event_down )
@@ -1852,8 +1852,8 @@ void Touch_KeyEvent( int key, int down )
 	int xi, yi;
 	float x, y;
 
-	if( touch_enable->integer )
-		return;
+//	if( touch_enable->integer )
+//		return;
 
 	if( !touch.clientonly )
 		return;

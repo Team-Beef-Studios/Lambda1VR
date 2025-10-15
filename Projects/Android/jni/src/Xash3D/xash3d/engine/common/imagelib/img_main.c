@@ -223,6 +223,9 @@ rgbdata_t *FS_LoadImage( const char *filename, const byte *buffer, size_t size )
 {
 	const char	*ext = FS_FileExtension( filename );
 	string		path, loadname, sidename;
+    memset(path, 0, 256);
+    memset(loadname, 0, 256);
+    memset(sidename, 0, 256);
 	qboolean		anyformat = true;
 	qboolean		gamedironly = true;
 	int		i;
