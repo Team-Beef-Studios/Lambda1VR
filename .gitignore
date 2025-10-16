@@ -24,6 +24,8 @@ $RECYCLE.BIN/
 #model files
 *.mdl
 
+*.wav
+
 #files created by build
 *.apk
 *.ap_
@@ -36,8 +38,8 @@ Projects/Android/.externalNativeBuild/*
 Projects/Android/.gradle/*
 Projects/Android/.idea/codeStyles/Project.xml
 Projects/.idea/*
+assets/models
 .gradle/*
-assets/*
 *.json
 *.bin
 *.ser
@@ -65,3 +67,4 @@ Projects/Android/jni/SupportLibs/liboggvorbis/libs/x86/libvorbis.so
 build/intermediates/lint-cache/maven.google/com/android/support/group-index.xml
 build/intermediates/lint-cache/maven.google/master-index.xml
 build/intermediates/lint-cache/sdk-registry.xml/sdk-registry.xml
+assets/AoMDC/models/gmgeneral_display.aomdc

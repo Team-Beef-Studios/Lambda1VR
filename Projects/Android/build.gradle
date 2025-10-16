@@ -5,13 +5,16 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.3'
+        classpath 'com.android.tools.build:gradle:8.2.1'
     }
 }
 
 apply plugin: 'com.android.application'
 
 android {
+
+    namespace = "com.drbeef.lambda1vr"
+
     // This is the name of the generated apk file, which will have
     // -debug.apk or -release.apk appended to it.
     // The filename doesn't effect the Android installation process.
@@ -30,13 +33,13 @@ android {
             }
             ndkBuild {
                 def numProcs = Runtime.runtime.availableProcessors()
-                arguments "V=0", "-j$numProcs", "-C$project.buildDir.parent", "APP_PLATFORM=android-29", "NDK_TOOLCHAIN_VERSION=clang", "APP_STL=c++_static"
+                arguments "V=0", "-j$numProcs", "-C$project.buildDir.parent", "APP_PLATFORM=android-32", "NDK_TOOLCHAIN_VERSION=clang", "APP_STL=c++_static"
                 abiFilters 'arm64-v8a'
             }
         }
 
-        minSdkVersion 29
-        targetSdkVersion 29
+        minSdkVersion 32
+        targetSdkVersion 32
     }
 
     externalNativeBuild {
@@ -124,15 +127,16 @@ android {
         sourceCompatibility = '1.8'
         targetCompatibility = '1.8'
     }
-    compileSdkVersion = 29
+    compileSdkVersion = 32
     buildToolsVersion = '29.0.3'
-    ndkVersion '21.1.6352462'
+
+    ndkVersion '25.1.8937393'
 }
 
 dependencies {
-    implementation "com.android.support:support-compat:26.1.0"
-    implementation "com.android.support:support-core-utils:26.1.0"
-    //implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+    implementation "com.android.support:support-compat:28.0.0"
+    implementation "com.android.support:support-core-utils:28.0.0"
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
 }
 
 repositories {

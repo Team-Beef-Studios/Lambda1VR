@@ -1,0 +1,6 @@
+"Enable Cheats" "sv_cheats 1"
+"God Mode" "god"
+"Give Crowbar" "give weapon_crowbar"
+"Give Suit" "give item_suit"
+"Give All Weapons" "impulse 101"
+"No Clip" "noclip"

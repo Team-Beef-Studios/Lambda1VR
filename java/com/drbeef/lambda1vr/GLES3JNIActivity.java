@@ -16,12 +16,16 @@ import java.util.Locale;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
@@ -58,10 +62,8 @@ import static android.system.Os.setenv;
 
 	private static final String TAG = "Lambda1VR";
 
-	private boolean permissionsGranted = false;
+	private static final int REQUEST_MANAGE_ALL_FILES = 2296;
 
-	private static final int READ_EXTERNAL_STORAGE_PERMISSION_ID = 1;
-	private static final int WRITE_EXTERNAL_STORAGE_PERMISSION_ID = 2;
 
 	String commandLineParams;
 
@@ -88,47 +90,28 @@ import static android.system.Os.setenv;
 
 	/** Initializes the Activity only if the permission has been granted. */
 	private void checkPermissionsAndInitialize() {
-		// Boilerplate for checking runtime permissions in Android.
-		if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-				!= PackageManager.PERMISSION_GRANTED){
-			ActivityCompat.requestPermissions(
-					GLES3JNIActivity.this,
-					new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE},
-					WRITE_EXTERNAL_STORAGE_PERMISSION_ID);
-		} else if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-				!= PackageManager.PERMISSION_GRANTED){
-			ActivityCompat.requestPermissions(
-					GLES3JNIActivity.this,
-					new String[] {Manifest.permission.READ_EXTERNAL_STORAGE},
-					READ_EXTERNAL_STORAGE_PERMISSION_ID);
+		if (!Environment.isExternalStorageManager()) {
+			//request for the permission
+			Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+			Uri uri = Uri.fromParts("package", getPackageName(), null);
+			intent.setData(uri);
+			startActivityForResult(intent, REQUEST_MANAGE_ALL_FILES);
+
+			finishAffinity(); // Cleanly exit
+
 		}
 		else
 		{
-			permissionsGranted = true;
-		}
-
-		if (permissionsGranted) {
 			// Permissions have already been granted.
 			create();
 		}
 	}
 
-	/** Handles the user accepting the permission. */
 	@Override
-	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
-		if (requestCode == READ_EXTERNAL_STORAGE_PERMISSION_ID) {
-			if (results.length > 0 && results[0] != PackageManager.PERMISSION_GRANTED) {
-				System.exit(0);
-			}
-		}
-
-		if (requestCode == WRITE_EXTERNAL_STORAGE_PERMISSION_ID) {
-			if (results.length > 0 && results[0] != PackageManager.PERMISSION_GRANTED) {
-				System.exit(0);
-			}
-		}
-
-		checkPermissionsAndInitialize();
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		super.onActivityResult(requestCode, resultCode, data);
+		finishAffinity(); // Cleanly exit
+		System.exit(0);
 	}
 
 	public void create()
