@@ -316,7 +316,12 @@ void surfaceMessageQueue_PostMessage(surfaceMessageQueue * messageQueue, const s
 void VR_FrameSetup();
 bool VR_UseScreenLayer();
 float VR_GetScreenLayerDistance();
-bool VR_GetVRProjection(int eye, float zNear, float zFar, float* projection);
+bool VR_GetVRProjection(int eye, float zNear, float zFar, float gameFovX, float* projection);
+
+// Pixel shift from the centre of the eye buffer to the optical axis of the current eye.
+// Non-zero only for an asymmetric HMD; zero on the flat screen layer, where the runtime
+// (not our projection) places the quad. dy is positive-down to match the engine's 2D space.
+void VR_Get2DOffset(int eye, int width, int height, float *dx, float *dy);
 void VR_HandleControllerInput();
 void VR_SetHMDOrientation(float pitch, float yaw, float roll );
 void VR_SetHMDPosition(float x, float y, float z );

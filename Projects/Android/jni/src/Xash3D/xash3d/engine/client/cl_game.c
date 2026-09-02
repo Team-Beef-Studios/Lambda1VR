@@ -431,6 +431,23 @@ void SPR_AdjustSize( float *x, float *y, float *w, float *h )
 
 	if( w ) *w *= xscale;
 	if( h ) *h *= yscale;
+
+	// A fill that covers the whole buffer (damage flash, fade) must keep covering it once the
+	// 2D ortho is shifted to the eye's optical axis, so grow it instead of letting it move.
+	if( x && y && w && h && *x <= 1.0f && *y <= 1.0f &&
+		*w >= scr_width->value - 1.0f && *h >= scr_height->value - 1.0f )
+	{
+		float	dx, dy, mx, my;
+
+		R_Get2DOffset( &dx, &dy );
+		mx = fabs( dx ) + 1.0f;
+		my = fabs( dy ) + 1.0f;
+
+		*x -= mx;
+		*y -= my;
+		*w += 2.0f * mx;
+		*h += 2.0f * my;
+	}
 }
 
 /*
@@ -792,7 +809,18 @@ void CL_DrawScreenFade( void )
 	if( sf->fadeFlags & FFADE_MODULATE )
 		GL_SetRenderMode( kRenderTransAdd );
 	else GL_SetRenderMode( kRenderTransTexture );
-	R_DrawStretchPic( 0, 0, scr_width->integer, scr_height->integer, 0, 0, 1, 1, cls.fillImage );
+	// The 2D ortho is shifted to the eye's optical axis, so a rect that exactly matches the
+	// buffer would leave an unfaded strip at one edge. Overdraw past every edge.
+	{
+		float	dx, dy, mx, my;
+
+		R_Get2DOffset( &dx, &dy );
+		mx = fabs( dx ) + 1.0f;
+		my = fabs( dy ) + 1.0f;
+
+		R_DrawStretchPic( -mx, -my, scr_width->integer + 2.0f * mx, scr_height->integer + 2.0f * my,
+			0, 0, 1, 1, cls.fillImage );
+	}
 	pglColor4ub( 255, 255, 255, 255 );
 }
 

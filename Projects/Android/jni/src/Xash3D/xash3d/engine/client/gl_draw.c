@@ -271,6 +271,29 @@ void R_UploadStretchRaw( int texture, int cols, int rows, int width, int height,
 	GL_TexFilter( tex, false );
 }
 
+extern convar_t *vr_stereo_side;
+void VR_Get2DOffset( int eye, int width, int height, float *dx, float *dy );
+
+/*
+===============
+R_Get2DOffset
+
+Shift from the centre of the eye buffer to the optical axis. With an asymmetric HMD frustum the
+two are not the same point, so 2D content anchored to the buffer centre would not fuse between
+the eyes. Shifting the ortho window here moves every 2D item at once.
+===============
+*/
+void R_Get2DOffset( float *dx, float *dy )
+{
+	*dx = *dy = 0.0f;
+
+	// R_Set2DMode runs during Host_Main startup, before VR_Init registers the cvar
+	if( !vr_stereo_side )
+		return;
+
+	VR_Get2DOffset( vr_stereo_side->integer, glState.width, glState.height, dx, dy );
+}
+
 /*
 ===============
 R_Set2DMode
@@ -278,16 +301,25 @@ R_Set2DMode
 */
 void R_Set2DMode( qboolean enable )
 {
+	static float	last_dx = 0.0f, last_dy = 0.0f;
+	float		dx, dy;
+
 	if( enable )
 	{
-		if( glState.in2DMode )
+		R_Get2DOffset( &dx, &dy );
+
+		// the offset flips sign between eyes, so a cached ortho from the other eye is stale
+		if( glState.in2DMode && dx == last_dx && dy == last_dy )
 			return;
+
+		last_dx = dx;
+		last_dy = dy;
 
 		// set 2D virtual screen size
 		pglViewport( 0, 0, glState.width, glState.height );
 		pglMatrixMode( GL_PROJECTION );
 		pglLoadIdentity();
-		pglOrtho( 0, glState.width, glState.height, 0, -99999, 99999 );
+		pglOrtho( -dx, glState.width - dx, glState.height - dy, -dy, -99999, 99999 );
 		pglMatrixMode( GL_MODELVIEW );
 		pglLoadIdentity();
 

@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools"
 	package="com.drbeef.lambda1vr"
-	android:versionCode="38"
-	android:versionName="1.7.3"
+	android:versionCode="39"
+	android:versionName="1.7.4"
 	android:installLocation="auto" >
 
 	<!-- Tell the system this app requires OpenGL ES 3.1. -->

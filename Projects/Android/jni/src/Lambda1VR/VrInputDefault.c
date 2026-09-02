@@ -465,11 +465,16 @@ void HandleInput_Default( ovrInputStateTrackedRemote *pDominantTrackedRemoteNew,
 			static bool weaponSwitched = false;
 			if (vr_turn_angle->value != 0) // if snap angle feature is enabled
 			{
-				if (between(0.6f, pDominantTrackedRemoteNew->Joystick.y, 1.0f) ||
-						between(-1.0f, pDominantTrackedRemoteNew->Joystick.y, -0.6f))
+				//The x axis of this same stick turns the player. A worn stick does not give a
+				//clean single-axis reading, so a hard turn can carry enough y to open the
+				//weapon selector. Only act on a push that is clearly vertical.
+				float stickX = pDominantTrackedRemoteNew->Joystick.x;
+				float stickY = pDominantTrackedRemoteNew->Joystick.y;
+
+				if (fabs(stickY) >= 0.75f && fabs(stickY) > fabs(stickX) * 1.5f)
 				{
 					if (!weaponSwitched) {
-						if (between(0.6f, pDominantTrackedRemoteNew->Joystick.y, 1.0f))
+						if (stickY > 0.0f)
 						{
 							sendButtonActionSimple("invprev");
 						}

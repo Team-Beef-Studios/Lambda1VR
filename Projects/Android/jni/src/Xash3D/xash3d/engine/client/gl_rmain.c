@@ -629,8 +629,7 @@ void R_SetupFrustum( void )
 R_SetupProjectionMatrix
 =============
 */
-bool VR_GetVRProjection(int eye, float zNear, float zFar, float* projection);
-bool isScopeEngaged();
+bool VR_GetVRProjection(int eye, float zNear, float zFar, float gameFovX, float* projection);
 
 static void R_SetupProjectionMatrix( const ref_params_t *fd, matrix4x4 m )
 {
@@ -649,9 +648,10 @@ static void R_SetupProjectionMatrix( const ref_params_t *fd, matrix4x4 m )
 	zNear = 4.0f;
 	zFar = max( 256.0f, RI.farClip );
 
+	// A scope is handled inside VR_GetVRProjection, which narrows the headset's own asymmetric
+	// frustum in tangent space rather than substituting a symmetric one.
 	float vrProjection[16];
-	if (isScopeEngaged() ||
-		!VR_GetVRProjection(vr_stereo_side->value, zNear, zFar, vrProjection))
+	if (!VR_GetVRProjection(vr_stereo_side->value, zNear, zFar, fd->fov_x, vrProjection))
 	{
 		yMax = zNear * tan(fd->fov_y * M_PI / 360.0);
 		yMin = -yMax;

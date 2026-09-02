@@ -239,32 +239,81 @@ float VR_GetScreenLayerDistance()
 	return (4.5f);
 }
 
-bool VR_GetVRProjection(int eye, float zNear, float zFar, float* projection)
+// vr_stereo_side carries VR_EYE_LEFT_MONO / VR_EYE_RIGHT_MONO (2/3) while a scope is engaged.
+static int VR_ResolveEye(int eye)
 {
-	if (strstr(gAppState.OpenXRHMD, "pico") != NULL)
-	{
-		XrMatrix4x4f_CreateProjectionFov(
-				&(gAppState.ProjectionMatrices[eye]), GRAPHICS_OPENGL_ES,
-				gAppState.Projections[eye].fov, zNear, zFar);
-	}
+	if (eye >= ovrMaxNumEyes)
+		eye -= ovrMaxNumEyes;
 
-	if (strstr(gAppState.OpenXRHMD, "meta") != NULL)
-	{
-		XrFovf fov = {};
-		for (int eye = 0; eye < ovrMaxNumEyes; eye++)
-		{
-			fov.angleLeft += gAppState.Projections[eye].fov.angleLeft / 2.0f;
-			fov.angleRight += gAppState.Projections[eye].fov.angleRight / 2.0f;
-			fov.angleUp += gAppState.Projections[eye].fov.angleUp / 2.0f;
-			fov.angleDown += gAppState.Projections[eye].fov.angleDown / 2.0f;
-		}
-		XrMatrix4x4f_CreateProjectionFov(
-				&(gAppState.ProjectionMatrices[eye]), GRAPHICS_OPENGL_ES,
-				fov, zNear, zFar);
-	}
+	return (eye < 0 || eye >= ovrMaxNumEyes) ? 0 : eye;
+}
 
-	memcpy(projection, gAppState.ProjectionMatrices[eye].m, 16 * sizeof(float));
+static bool VR_GetEyeFov(int eye, XrFovf *fov)
+{
+	if (!gAppState.SessionActive || gAppState.Projections == NULL)
+		return false;
+
+	// The screen layer is a flat quad the runtime places itself; an asymmetric
+	// projection would skew the menu on it.
+	if (VR_UseScreenLayer())
+		return false;
+
+	*fov = gAppState.Projections[VR_ResolveEye(eye)].fov;
 	return true;
+}
+
+bool VR_GetVRProjection(int eye, float zNear, float zFar, float gameFovX, float* projection)
+{
+	XrFovf fov;
+	if (!VR_GetEyeFov(eye, &fov))
+		return false;
+
+	// A scope narrows the frustum in tangent space, which keeps the asymmetry the headset
+	// reported. Replacing it with a symmetric frustum is what left black gaps at the edges.
+	if (isScopeEngaged() && gameFovX > 0.0f && vrFOV > 0)
+	{
+		float zoom = tanf(DEG2RAD(vrFOV * 0.5f)) / tanf(DEG2RAD(gameFovX * 0.5f));
+		if (zoom > 1.0f)
+		{
+			fov.angleLeft = atanf(tanf(fov.angleLeft) / zoom);
+			fov.angleRight = atanf(tanf(fov.angleRight) / zoom);
+			fov.angleUp = atanf(tanf(fov.angleUp) / zoom);
+			fov.angleDown = atanf(tanf(fov.angleDown) / zoom);
+		}
+	}
+
+	// Local, not gAppState.ProjectionMatrices[eye]: after the mono remap that would
+	// overwrite eye 0's cached matrix with a zoomed one.
+	XrMatrix4x4f m;
+	XrMatrix4x4f_CreateProjectionFov(&m, GRAPHICS_OPENGL_ES, fov, zNear, zFar);
+
+	memcpy(projection, m.m, 16 * sizeof(float));
+	return true;
+}
+
+void VR_Get2DOffset(int eye, int width, int height, float *dx, float *dy)
+{
+	*dx = 0.0f;
+	*dy = 0.0f;
+
+	XrFovf fov;
+	if (!VR_GetEyeFov(eye, &fov))
+		return;
+
+	// An asymmetric frustum puts the optical axis away from the centre of the eye buffer,
+	// by opposite amounts in each eye. 2D content drawn at the buffer centre would not fuse.
+	// The straight-ahead ray lands at x_ndc = -(tanR + tanL) / (tanR - tanL).
+	float tanL = tanf(fov.angleLeft);
+	float tanR = tanf(fov.angleRight);
+	float tanD = tanf(fov.angleDown);
+	float tanU = tanf(fov.angleUp);
+
+	if (tanR - tanL > 0.0f)
+		*dx = -(tanR + tanL) / (2.0f * (tanR - tanL)) * (float)width;
+
+	// Negated: the engine's 2D space is y-down, NDC is y-up.
+	if (tanU - tanD > 0.0f)
+		*dy = (tanU + tanD) / (2.0f * (tanU - tanD)) * (float)height;
 }
 
 void R_ChangeDisplaySettings( int width, int height, qboolean fullscreen );
@@ -579,20 +628,47 @@ void * AppThreadFunction( void * parm )
 
 						bool useMask = (currentVLevel > 0.0f && currentVLevel <= 1.0f);
 
-						float width = useMask ? (frameBuffer->Width / 2.0f) * currentVLevel : 1;
-						float height = useMask ? (frameBuffer->Height / 2.0f) * currentVLevel : 1;
+						float left, right, bottom, top;
+						if (useMask)
+						{
+							//Centre the aperture on the optical axis, not on the middle of the
+							//buffer, so it lines up with the vignette quad the engine draws
+							//through the shifted 2D ortho. glScissor is y-up, so dy is negated.
+							float dx, dy;
+							VR_Get2DOffset(eye, frameBuffer->Width, frameBuffer->Height, &dx, &dy);
+
+							float cx = (frameBuffer->Width / 2.0f) + dx;
+							float cy = (frameBuffer->Height / 2.0f) - dy;
+							float hw = (frameBuffer->Width / 2.0f) * (1.0f - currentVLevel);
+							float hh = (frameBuffer->Height / 2.0f) * (1.0f - currentVLevel);
+
+							left = cx - hw;
+							right = frameBuffer->Width - (cx + hw);
+							bottom = cy - hh;
+							top = frameBuffer->Height - (cy + hh);
+
+							if (left < 0.0f) left = 0.0f;
+							if (right < 0.0f) right = 0.0f;
+							if (bottom < 0.0f) bottom = 0.0f;
+							if (top < 0.0f) top = 0.0f;
+						}
+						else
+						{
+							//Border texels only - these stay on the real buffer edges
+							left = right = bottom = top = 1;
+						}
 
 						// bottom
-						GL( glScissor( 0, 0, frameBuffer->Width, height ) );
+						GL( glScissor( 0, 0, frameBuffer->Width, bottom ) );
 						GL( glClear( GL_COLOR_BUFFER_BIT ) );
 						// top
-						GL( glScissor( 0, frameBuffer->Height - height, frameBuffer->Width, height ) );
+						GL( glScissor( 0, frameBuffer->Height - top, frameBuffer->Width, top ) );
 						GL( glClear( GL_COLOR_BUFFER_BIT ) );
 						// left
-						GL( glScissor( 0, 0, width, frameBuffer->Height ) );
+						GL( glScissor( 0, 0, left, frameBuffer->Height ) );
 						GL( glClear( GL_COLOR_BUFFER_BIT ) );
 						// right
-						GL( glScissor( frameBuffer->Width - width, 0, width, frameBuffer->Height ) );
+						GL( glScissor( frameBuffer->Width - right, 0, right, frameBuffer->Height ) );
 						GL( glClear( GL_COLOR_BUFFER_BIT ) );
 
 

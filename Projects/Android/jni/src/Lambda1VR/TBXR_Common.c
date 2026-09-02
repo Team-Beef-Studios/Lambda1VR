@@ -1818,6 +1818,10 @@ void TBXR_FrameSetup()
 	ALOGV("xrBeginFrame");
 	OXR(xrBeginFrame(gAppState.Session, &beginFrameDesc));
 
+	//Locate the views before anything renders, so the fov/pose used to build the projection
+	//belongs to this frame. VR_FrameSetup publishes vrFOV, so this has to come first.
+	TBXR_updateProjections();
+
 	//Game specific frame setup stuff called here
 	VR_FrameSetup();
 
@@ -1884,6 +1888,10 @@ void TBXR_finishEyeBuffer(int eye )
 
 void TBXR_updateProjections()
 {
+	if (gAppState.SessionActive == GL_FALSE || gAppState.Projections == NULL) {
+		return;
+	}
+
 	XrViewLocateInfo projectionInfo = {};
 	projectionInfo.type = XR_TYPE_VIEW_LOCATE_INFO;
 	projectionInfo.viewConfigurationType = gAppState.ViewportConfig.viewConfigurationType;
@@ -1895,20 +1903,37 @@ void TBXR_updateProjections()
 	uint32_t projectionCapacityInput = ovrMaxNumEyes;
 	uint32_t projectionCountOutput = projectionCapacityInput;
 
+	XrView located[ovrMaxNumEyes];
+	for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+		memset(&located[eye], 0, sizeof(XrView));
+		located[eye].type = XR_TYPE_VIEW;
+	}
+
 	OXR(xrLocateViews(
 			gAppState.Session,
 			&projectionInfo,
 			&viewState,
 			projectionCapacityInput,
 			&projectionCountOutput,
-			gAppState.Projections));
-}
+			located));
 
-float fov_y = 0.0;
+	// Keep the previous frame's views rather than adopting an invalid pose or a zero fov,
+	// which would give a zero-width frustum.
+	const XrViewStateFlags required = XR_VIEW_STATE_POSITION_VALID_BIT |
+									  XR_VIEW_STATE_ORIENTATION_VALID_BIT;
+	if ((viewState.viewStateFlags & required) != required) {
+		return;
+	}
 
-float GetFOV()
-{
-	return fov_y;
+	for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+		gAppState.Projections[eye] = located[eye];
+	}
+
+	// Maximum extent across both eyes. The engine culls with a symmetric frustum built from this,
+	// so it must cover the widest asymmetric edge or geometry pops in at the periphery.
+	// Stays an int: it is printed with %d and compared against the integer cl.scr_fov.
+	vrFOV = (int)((fabs(gAppState.Projections[0].fov.angleLeft) +
+				   fabs(gAppState.Projections[1].fov.angleRight)) * 180.0f / M_PI);
 }
 
 void TBXR_submitFrame()
@@ -1916,23 +1941,6 @@ void TBXR_submitFrame()
 	if (gAppState.SessionActive == GL_FALSE) {
 		return;
 	}
-
-	TBXR_updateProjections();
-
-	XrFovf fov = {};
-	XrPosef viewTransform[2];
-
-	for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-		XrPosef xfHeadFromEye = gAppState.Projections[eye].pose;
-		XrPosef xfStageFromEye = XrPosef_Multiply(gAppState.xfStageFromHead, xfHeadFromEye);
-		viewTransform[eye] = XrPosef_Inverse(xfStageFromEye);
-        fov.angleLeft += gAppState.Projections[eye].fov.angleLeft / 2.0f;
-        fov.angleRight += gAppState.Projections[eye].fov.angleRight / 2.0f;
-        fov.angleUp += gAppState.Projections[eye].fov.angleUp / 2.0f;
-        fov.angleDown += gAppState.Projections[eye].fov.angleDown / 2.0f;
-	}
-	vrFOV = (fabs(fov.angleLeft) + fabs(fov.angleRight)) * 180.0f / M_PI;
-
 
 	gAppState.LayerCount = 0;
 	memset(gAppState.Layers, 0, sizeof(xrCompositorLayer_Union) * ovrMaxLayerCount);
@@ -1953,7 +1961,10 @@ void TBXR_submitFrame()
 			memset(&projection_layer_elements[eye], 0, sizeof(XrCompositionLayerProjectionView));
 			projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
 			projection_layer_elements[eye].pose = gAppState.xfStageFromHead;
-			projection_layer_elements[eye].fov = fov;
+			// Must match the fov the eye was actually rendered with, or the compositor
+			// re-projects wrongly. Stays unzoomed while a scope is engaged so that the
+			// narrowed render frustum reads as real magnification.
+			projection_layer_elements[eye].fov = gAppState.Projections[eye].fov;
 			memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
 			projection_layer_elements[eye].subImage.swapchain =
 					frameBuffer->ColorSwapChain.Handle;
